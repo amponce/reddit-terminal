@@ -405,7 +405,7 @@ Limit your response to 200 words."""
 
     # Get AI analysis
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful assistant that analyzes Reddit content."},
             {"role": "user", "content": prompt}
