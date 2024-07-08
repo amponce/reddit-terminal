@@ -1,4 +1,4 @@
-# Reddit Terminal Reader
+# Reddit Terminal
 
 A Snoo Terminal application to browse Reddit posts and comments using the Reddit API or web scraping as a fallback.
 
@@ -42,6 +42,7 @@ A Snoo Terminal application to browse Reddit posts and comments using the Reddit
    REDDIT_CLIENT_ID=your_client_id
    REDDIT_CLIENT_SECRET=your_client_secret
    REDDIT_USER_AGENT=your_user_agent
+   OPENAI_API_KEY=your_key
    ```
 
 ## Getting Reddit API Credentials
