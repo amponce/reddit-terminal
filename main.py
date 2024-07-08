@@ -100,6 +100,19 @@ class RedditClient:
 
         self.console.print(table)
 
+    def display_post_details(self, post):
+        table = Table(title="Post Details")
+        table.add_column("Field", style="cyan", no_wrap=True)
+        table.add_column("Value", style="magenta")
+
+        table.add_row("Title", post.title)
+        table.add_row("Score", self.color_score(post.score))
+        table.add_row("Author", post.author)
+        table.add_row("Comments", str(post.num_comments))
+        table.add_row("URL", post.url)
+
+        self.console.print(table)
+
 
 class Post:
     def __init__(self, title, score, author, num_comments, url, id=None):
@@ -179,6 +192,7 @@ def view_post(post_index):
         current_comments = get_comments(post)
         comment_page = 0
         selected_post_index = post_index
+        reddit_client.display_post_details(post)
         display_post_and_comments(post)
     else:
         print(f"Invalid post number. Please enter a number between 1 and {len(current_posts)}.")
@@ -240,9 +254,13 @@ def sort_comments(comments, method='best'):
     else:
         return comments
 
-def search_reddit(query, subreddit, time_filter='all', min_comments=0, min_score=0):
+def search_reddit(query, subreddit=None, time_filter='all', min_comments=0, min_score=0):
     if reddit_client.use_api:
-        results = list(reddit_client.reddit.subreddit(subreddit).search(query, time_filter=time_filter, limit=50))
+        if subreddit:
+            results = list(reddit_client.reddit.subreddit(subreddit).search(query, time_filter=time_filter, limit=50))
+        else:
+            results = list(reddit_client.reddit.subreddit('all').search(query, time_filter=time_filter, limit=50))
+        
         filtered_results = [
             post for post in results
             if post.num_comments >= min_comments and post.score >= min_score
@@ -251,6 +269,7 @@ def search_reddit(query, subreddit, time_filter='all', min_comments=0, min_score
     else:
         print("Search functionality not available without API access.")
         return []
+
 
 def fetch_post_comments(post):
     post.comments.replace_more(limit=0)
@@ -335,11 +354,10 @@ def display_interactive_summary(post, summary):
     console.print(f"[blue]URL: {post.url}[/blue]")
     console.print("\n[bold]Type 'details' to see the full comments or 'back' to return to the post list.[/bold]")
 
-def search_and_summarize(query, subreddit):
-    if subreddit.lower() != 'askreddit':
-        print("This feature is only available for the AskReddit subreddit.")
-        return
-
+def search_and_summarize(query, subreddit=None):
+    if subreddit and subreddit.lower() != 'askreddit':
+        print("This feature is currently optimized for AskReddit but will perform a global search.")
+    
     posts = search_reddit(query, subreddit)
     if not posts:
         print("No relevant posts found.")
@@ -354,7 +372,7 @@ def search_and_summarize(query, subreddit):
             post = future_to_post[future]
             try:
                 comments = future.result()
-                summary = summarize_comments(comments, post.title, subreddit)
+                summary = summarize_comments(comments, post.title, subreddit or 'all')
                 console.print(f"[bold magenta]{post.title}[/bold magenta]")
                 console.print(f"[italic]{summary}[/italic]\n")
                 rating = get_feedback()
@@ -363,6 +381,7 @@ def search_and_summarize(query, subreddit):
                 display_topics(topics)
             except Exception as exc:
                 print(f"An error occurred while processing a post: {exc}")
+
 
 # The main loop remains the same
 def main():
@@ -448,13 +467,11 @@ def main():
                 comment.collapsed = True
             display_threaded_comments(current_comments, 0, 100, comment_sort_method)
         elif command[0] == 's':
-            if current_subreddit and current_subreddit.lower() == 'askreddit':
-                query = ' '.join(command[1:]) if len(command) > 1 else input("Enter your search query: ")
-                search_and_summarize(query, current_subreddit)
-            else:
-                print("Search and summarize is only available for the AskReddit subreddit.")
+            query = ' '.join(command[1:]) if len(command) > 1 else input("Enter your search query: ")
+            search_and_summarize(query, current_subreddit)
         else:
             print("Invalid command. Type '/help' for a list of available commands.")
+
 
 def display_help():
     help_text = """
@@ -476,18 +493,19 @@ def display_help():
     collapse_all        - Collapse all comments to show only root-level comments
     more                - Show more comments (not implemented)
     q                   - Quit the program
-    s                   - Search and summarize (only available in AskReddit)
+    s                   - Search and summarize (available globally)
 
     Notes:
     - If no subreddit is specified, the front page will be shown.
     - The default post sort method is 'hot'.
     - The default comment sort method is 'best'.
     - The default post limit is 10.
-    - The search and summarize feature is only available for the AskReddit subreddit.
+    - The search and summarize feature can now be used globally.
     - You need to set up your OpenAI API key in the .env file for the summarize feature to work.
 
     """
-    print(help_text)   
+    print(help_text)
+
 
 if __name__ == "__main__":
     main()
