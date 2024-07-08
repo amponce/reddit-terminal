@@ -10,6 +10,10 @@ from rich.table import Table
 from rich.text import Text
 import textwrap
 import webbrowser
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
 
@@ -114,7 +118,7 @@ class Comment:
         self.body = body
         self.depth = depth
         self.children = []
-        self.collapsed = False  # Changed to False by default
+        self.collapsed = False  # Start expanded by default
         self.has_more_replies = False
         self.is_root = depth == 0
 
@@ -123,7 +127,38 @@ def flatten_comments(comments):
         yield comment
         yield from flatten_comments(comment.children)
 
+def toggle_comment(action, comment_number):
+    try:
+        comment_index = int(comment_number) - 1
+        if 0 <= comment_index < len(current_comments):
+            comment = current_comments[comment_index]
+            comment.collapsed = action == 'collapse'
+            display_threaded_comments(current_comments, 0, 100, comment_sort_method)
+        else:
+            print("Invalid comment number.")
+    except (ValueError, IndexError):
+        print(f"Invalid {action} command. Use '{action[0]} <number>'.")
+
+def display_comment(comment, console, number, comment_map):
+    indent = "  " * comment.depth
+    collapse_symbol = "[-]" if not comment.collapsed else "[+]"
+    console.print(f"{indent}{collapse_symbol} [cyan]{number}.[/cyan] [yellow]{comment.author}[/yellow] [green](Score: {comment.score})[/green]")
+    
+    if not comment.collapsed:
+        wrapped_body = textwrap.fill(comment.body, width=80-len(indent), initial_indent=indent, subsequent_indent=indent)
+        console.print(wrapped_body)
+    
+    if comment.children:
+        reply_count = sum(1 for _ in flatten_comments(comment.children))
+        if comment.collapsed or comment.is_root:
+            console.print(f"{indent}  [blue]{reply_count} repl{'y' if reply_count == 1 else 'ies'}[/blue]")
+    
+    if not comment.collapsed:
+        for i, child in enumerate(comment.children, start=1):
+            display_comment(child, console, f"{number}.{i}", comment_map)
+
 def display_threaded_comments(comments, start=0, count=10, sort_method='best'):
+    global current_comments
     current_comments = sort_comments(comments, sort_method)
     console = Console()
     displayed = 0
@@ -135,40 +170,6 @@ def display_threaded_comments(comments, start=0, count=10, sort_method='best'):
         displayed += 1
     console.print("\nEnter 'e <number>' to expand or 'c <number>' to collapse a comment thread.")
     return displayed
-
-def display_comment(comment, console, number, comment_map):
-    indent = "  " * comment.depth
-    collapse_symbol = "[-]" if not comment.collapsed else "[+]"
-    console.print(f"{indent}{collapse_symbol} [cyan]{number}.[/cyan] [yellow]{comment.author}[/yellow] [green](Score: {comment.score})[/green]")
-    
-    wrapped_body = textwrap.fill(comment.body, width=80-len(indent), initial_indent=indent, subsequent_indent=indent)
-    console.print(wrapped_body)
-    
-    if comment.children:
-        reply_count = sum(1 for _ in flatten_comments(comment.children))
-        if comment.collapsed or comment.is_root:
-            console.print(f"{indent}  [blue]{reply_count} repl{'y' if reply_count == 1 else 'ies'}[/blue]")
-    
-    if not comment.collapsed:
-        for i, child in enumerate(comment.children, start=1):
-            display_comment(child, console, f"{number}.{i}", comment_map)
-
-def toggle_comment(action, comment_number):
-    try:
-        comment_index = int(comment_number) - 1
-        if 0 <= comment_index < len(current_comments):
-            comment = current_comments[comment_index]
-            if action == 'expand':
-                comment.collapsed = False
-            else:  # collapse
-                comment.collapsed = True
-                for descendant in flatten_comments(comment.children):
-                    descendant.collapsed = True
-            display_threaded_comments(current_comments, 0, 100, comment_sort_method)
-        else:
-            print("Invalid comment number.")
-    except (ValueError, IndexError):
-        print(f"Invalid {action} command. Use '{action[0]} <number>'.")
 
 def view_post(post_index):
     global current_comments, comment_page, selected_post_index
@@ -237,6 +238,55 @@ def sort_comments(comments, method='best'):
         return sorted(comments, key=lambda c: abs(c.score), reverse=True)
     else:
         return comments
+
+def search_reddit(query, subreddit):
+    if reddit_client.use_api:
+        return list(reddit_client.reddit.subreddit(subreddit).search(query, limit=5))
+    else:
+        print("Search functionality not available without API access.")
+        return []
+
+def fetch_post_comments(post):
+    post.comments.replace_more(limit=0)
+    return [comment.body for comment in post.comments.list() if len(comment.body) > 50]
+
+def summarize_comments(comments):
+    prompt = f"Summarize the following Reddit comments on an AskReddit post:\n\n{' '.join(comments[:5])}\n\nSummary:"
+    response = client.chat.completions.create(model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt}
+    ],
+    max_tokens=150,
+    n=1,
+    stop=None,
+    temperature=0.7)
+    return response.choices[0].message.content.strip()
+
+def search_and_summarize(query, subreddit):
+    if subreddit.lower() != 'askreddit':
+        print("This feature is only available for the AskReddit subreddit.")
+        return
+
+    posts = search_reddit(query, subreddit)
+    if not posts:
+        print("No relevant posts found.")
+        return
+
+    console = Console()
+    console.print(f"\n[bold]Top 5 relevant posts for '{query}':[/bold]\n")
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_post = {executor.submit(fetch_post_comments, post): post for post in posts[:5]}
+        for future in as_completed(future_to_post):
+            post = future_to_post[future]
+            try:
+                comments = future.result()
+                summary = summarize_comments(comments)
+                console.print(f"[bold magenta]{post.title}[/bold magenta]")
+                console.print(f"[italic]{summary}[/italic]\n")
+            except Exception as exc:
+                print(f"An error occurred while processing a post: {exc}")
 
 # The main loop remains the same
 def main():
@@ -321,6 +371,12 @@ def main():
             for comment in current_comments:
                 comment.collapsed = True
             display_threaded_comments(current_comments, 0, 100, comment_sort_method)
+        elif command[0] == 's':
+            if current_subreddit and current_subreddit.lower() == 'askreddit':
+                query = ' '.join(command[1:]) if len(command) > 1 else input("Enter your search query: ")
+                search_and_summarize(query, current_subreddit)
+            else:
+                print("Search and summarize is only available for the AskReddit subreddit.")
         else:
             print("Invalid command. Type '/help' for a list of available commands.")
 
@@ -344,12 +400,16 @@ def display_help():
     collapse_all        - Collapse all comments to show only root-level comments
     more                - Show more comments (not implemented)
     q                   - Quit the program
+    s                   - Search and summarize (only available in AskReddit)
 
     Notes:
     - If no subreddit is specified, the front page will be shown.
     - The default post sort method is 'hot'.
     - The default comment sort method is 'best'.
     - The default post limit is 10.
+    - The search and summarize feature is only available for the AskReddit subreddit.
+    - You need to set up your OpenAI API key in the .env file for the summarize feature to work.
+
     """
     print(help_text)   
 
