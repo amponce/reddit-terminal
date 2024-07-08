@@ -14,6 +14,7 @@ from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
+from rich.console import Console
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -382,11 +383,47 @@ def search_and_summarize(query, subreddit=None):
             except Exception as exc:
                 print(f"An error occurred while processing a post: {exc}")
 
+def ai_subreddit_analysis(subreddit_name, aspects):
+    # Fetch recent posts from the subreddit
+    posts = reddit_client.get_posts(subreddit_name, sort='hot', limit=20)
+    
+    # Prepare the prompt for the AI
+    post_titles = "\n".join([f"- {post.title}" for post in posts])
+    prompt = f"""Analyze the following recent posts from the r/{subreddit_name} subreddit:
+
+{post_titles}
+
+The user is particularly interested in: {aspects}
+
+Based on these posts and the user's interests, provide a brief analysis of:
+1. The main topics or themes currently being discussed, focusing on {aspects}
+2. Any trending or particularly interesting posts related to {aspects}
+3. The overall mood or sentiment of the subreddit, especially regarding {aspects}
+4. What a new visitor to this subreddit should pay attention to, considering their interest in {aspects}
+
+Limit your response to 200 words."""
+
+    # Get AI analysis
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that analyzes Reddit content."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=300,
+        n=1,
+        stop=None,
+        temperature=0.7
+    )
+    
+    return response.choices[0].message.content.strip()
+
 
 # The main loop remains the same
 def main():
     global reddit_client, current_subreddit, current_posts, current_comments, post_limit, post_sort_method, comment_sort_method, comment_page, selected_post_index
     reddit_client = RedditClient()
+    console = Console()  # Add this line
     current_subreddit = None
     current_posts = []
     current_comments = []
@@ -426,8 +463,9 @@ def main():
     refresh_posts()
 
     while True:
-        print(f"\nCurrent subreddit: {current_subreddit or 'Front Page'} | Post sort: {post_sort_method} | Limit: {post_limit}")
+        console.print(f"\nCurrent subreddit: {current_subreddit or 'Front Page'} | Post sort: {post_sort_method} | Limit: {post_limit}")
         command = input("Enter a command: ").lower().split()
+
 
         if not command:
             continue
@@ -469,9 +507,17 @@ def main():
         elif command[0] == 's':
             query = ' '.join(command[1:]) if len(command) > 1 else input("Enter your search query: ")
             search_and_summarize(query, current_subreddit)
+        elif command[0] == 'analyze':
+            if current_subreddit:
+                aspects = input("What aspects are you interested in? (e.g., topics, sentiment, controversies): ")
+                console.print("[bold]Analyzing subreddit...[/bold]")
+                analysis = ai_subreddit_analysis(current_subreddit, aspects)
+                console.print(f"\n[bold]AI Analysis of r/{current_subreddit}:[/bold]\n")
+                console.print(analysis)
+            else:
+                console.print("Please select a subreddit first using the '/sub' command.")
         else:
-            print("Invalid command. Type '/help' for a list of available commands.")
-
+            console.print("Invalid command. Type '/help' for a list of available commands.")
 
 def display_help():
     help_text = """
@@ -494,6 +540,7 @@ def display_help():
     more                - Show more comments (not implemented)
     q                   - Quit the program
     s                   - Search and summarize (available globally)
+    analyze            - Get AI analysis of the current subreddit
 
     Notes:
     - If no subreddit is specified, the front page will be shown.
