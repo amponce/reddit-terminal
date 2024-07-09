@@ -1,4 +1,3 @@
-# reddit_client.py
 
 import os
 import praw
@@ -43,7 +42,7 @@ class RedditClient:
                     'top': subreddit.top
                 }
                 posts = sorting.get(sort, subreddit.hot)(limit=limit)
-                return [Post(post.title, post.score, post.author.name if post.author else '[deleted]', post.num_comments, post.url, post.id) for post in posts]
+                return [Post(post.title, post.score, post.author.name if post.author else '[deleted]', post.num_comments, post.url, post.id, post.selftext) for post in posts]
             else:
                 return self.scrape_posts(subreddit_name)
         except Exception as e:
@@ -62,5 +61,6 @@ class RedditClient:
             author = post.find('a', class_='author').text.strip()
             num_comments = post.find('a', class_='comments').text.split()[0]
             url = 'https://www.reddit.com' + post.find('a', class_='comments')['href']
-            posts.append(Post(title, score, author, num_comments, url))
+            text = post.find('div', class_='expando').text.strip() if post.find('div', class_='expando') else ''
+            posts.append(Post(title, score, author, num_comments, url, text=text))
         return posts[:10]

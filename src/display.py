@@ -60,7 +60,9 @@ class ConsoleUI:
         self.console.print(table)
 
     def display_post_and_comments(self, post, comments, comment_page):
-        self.console.print("\n[bold]Comments:[/bold]")
+        self.console.print(f"\n[bold magenta]{post.title}[/bold magenta]\n")
+        self.console.print(f"[italic]{post.text}[/italic]\n")
+        self.console.print(f"[bold]Comments:[/bold]")
         self.display_threaded_comments(comments, comment_page * 10, 10)
         self.console.print("\nType 'n' for next page, 'p' for previous page, or 'b' to go back to posts.")
 
@@ -76,7 +78,8 @@ class ConsoleUI:
 
     def display_threaded_comments(self, comments, start=0, count=10):
         displayed = 0
-        for i, comment in enumerate(comments[start:], start=1):
+        flat_comments = list(self.flatten_comments(comments))
+        for i, comment in enumerate(flat_comments[start:], start=1):
             if displayed >= count:
                 break
             self.display_comment(comment, i)
@@ -89,7 +92,7 @@ class ConsoleUI:
         self.console.print(analysis)
 
     def display_comment(self, comment, number):
-        indent = "  " * comment.depth
+        indent = "  " * min(comment.depth, 6)  # Limit depth to 6
         collapse_symbol = "[-]" if not comment.collapsed else "[+]"
         self.console.print(f"{indent}{collapse_symbol} [cyan]{number}.[/cyan] [yellow]{comment.author}[/yellow] [green](Score: {comment.score})[/green]")
         
@@ -101,6 +104,12 @@ class ConsoleUI:
             reply_count = len(comment.children)
             if comment.collapsed or comment.is_root:
                 self.console.print(f"{indent}  [blue]{reply_count} repl{'y' if reply_count == 1 else 'ies'}[/blue]")
+
+    def flatten_comments(self, comments, depth=0, max_depth=6):
+        for comment in comments:
+            if depth < max_depth:
+                yield comment
+                yield from self.flatten_comments(comment.children, depth + 1, max_depth)
 
     def display_help(self):
         help_text = """

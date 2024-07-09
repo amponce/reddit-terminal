@@ -1,4 +1,5 @@
 # comment_utils.py
+
 from .models import Comment
 import requests
 from bs4 import BeautifulSoup
@@ -9,10 +10,11 @@ class CommentManager:
         self.comment_page = 0
         self.comment_sort_method = 'best'
 
-    def flatten_comments(self, comments):
+    def flatten_comments(self, comments, depth=0, max_depth=6):
         for comment in comments:
-            yield comment
-            yield from self.flatten_comments(comment.children)
+            if depth < max_depth:
+                yield comment
+                yield from self.flatten_comments(comment.children, depth + 1, max_depth)
 
     def toggle_comment(self, action, comment_number):
         try:
@@ -86,5 +88,6 @@ def scrape_comments(post_url):
         score = 0 if score == '' else int(score)  # Ensure score is parsed correctly
         body = comment.find('div', class_='md').text.strip() if comment.find('div', class_='md') else ''
         depth = len(comment.find_parents('div', class_='comment'))
-        comments.append(Comment(author, score, body, depth))
+        if depth <= 6:  # Limit depth to 6
+            comments.append(Comment(author, score, body, depth))
     return comments

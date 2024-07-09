@@ -1,13 +1,14 @@
 # models.py
 
 class Post:
-    def __init__(self, title, score, author, num_comments, url, id=None):
+    def __init__(self, title, score, author, num_comments, url, id=None, text=''):
         self.title = title
         self.score = score
         self.author = author
         self.num_comments = num_comments
         self.url = url
         self.id = id
+        self.text = text
 
 class Comment:
     def __init__(self, author, score, body, depth=0, id=None):
