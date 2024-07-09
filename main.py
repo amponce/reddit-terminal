@@ -114,6 +114,9 @@ class RedditClient:
 
         self.console.print(table)
 
+def open_in_browser(url):
+    webbrowser.open(url, new=2)
+
 
 class Post:
     def __init__(self, title, score, author, num_comments, url, id=None):
@@ -213,6 +216,14 @@ def get_comments(post):
         ) for comment in comments]
     else:
         return scrape_comments(post.url)      
+    
+def change_comment_sort(new_sort: str):
+    global comment_sort_method
+    if new_sort in ['best', 'new', 'controversial']:
+        comment_sort_method = new_sort
+        display_threaded_comments(current_comments, comment_page * 10, 10, comment_sort_method)
+    else:
+        print("Invalid sort method. Use 'best', 'new', or 'controversial.")   
 
 def scrape_comments(post_url):
     response = requests.get(post_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -466,20 +477,18 @@ def main():
         console.print(f"\nCurrent subreddit: {current_subreddit or 'Front Page'} | Post sort: {post_sort_method} | Limit: {post_limit}")
         command = input("Enter a command: ").lower().split()
 
-
         if not command:
             continue
-
         if command[0] == 'q':
             break
         elif command[0] == '/help':
             display_help()
-        elif command[0] == '/sub':
+        elif command[0] == 'r':
             change_subreddit(command[1] if len(command) > 1 else None)
-        elif command[0] == '/sort':
+        elif command[0] == 'sort':
             change_post_sort(command[1] if len(command) > 1 else 'hot')
-        elif command[0] == '/limit':
-            change_post_limit(command[1] if len(command) > 1 else '10')
+        elif command[0] == 'limit':
+            change_post_limit(command[1] if len(command) > 1 else '20')
         elif command[0].isdigit():
             view_post(int(command[0]) - 1)
         elif command[0] == 'n':
@@ -525,9 +534,9 @@ def display_help():
 
     /help               - Display this help message
     
-    /sub <subreddit>    - Change to a specific subreddit (e.g., /sub AskReddit)
-    /sort <method>      - Change the post sorting method. Options: hot, new, top
-    /limit <number>     - Change the number of posts displayed
+    r <subreddit>    - Change to a specific subreddit (e.g., /sub AskReddit)
+    sort <method>      - Change the post sorting method. Options: hot, new, top
+    limit <number>     - Change the number of posts displayed
     <number>            - View a specific post and its comments
     n                   - View next page of comments
     p                   - View previous page of comments
