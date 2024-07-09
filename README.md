@@ -70,10 +70,12 @@ python main.py
 ## Commands
 
 - `/help` - Display the help message
-- `/sub <subreddit>` - Change to a specific subreddit (e.g., `/sub AskReddit`)
+- `/r <subreddit>` - Change to a specific subreddit (e.g., `/sub AskReddit`)
 - `/sort <method>` - Change the post sorting method. Options: `hot`, `new`, `top`
 - `/limit <number>` - Change the number of posts displayed
 - `<number>` - View a specific post and its comments
+- `s` - Search and summarize (available globally)
+- `analyze` - Get AI analysis of the current subreddit
 - `n` - View next page of comments
 - `p` - View previous page of comments
 - `b` - Go back to post list
