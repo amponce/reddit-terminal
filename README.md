@@ -7,7 +7,7 @@ A Snoo Terminal application to browse Reddit posts and comments using the Reddit
 - View posts from the front page or specific subreddits
 - Display comments in a threaded manner
 - Pagination for comments
-- Fallback to web scraping if API credentials are not available
+- Fallback to web scraping if API credentials are not available (This feature is currently blocked by Reddit)
 
 ## Prerequisites
 
