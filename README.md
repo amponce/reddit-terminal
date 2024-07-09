@@ -70,7 +70,7 @@ python main.py
 ## Commands
 
 - `/help` - Display the help message
-- `/r <subreddit>` - Change to a specific subreddit (e.g., `/sub AskReddit`)
+- `/r <subreddit>` - Change to a specific subreddit (e.g., `/r AskReddit`)
 - `/sort <method>` - Change the post sorting method. Options: `hot`, `new`, `top`
 - `/limit <number>` - Change the number of posts displayed
 - `<number>` - View a specific post and its comments
