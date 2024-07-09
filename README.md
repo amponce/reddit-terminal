@@ -41,7 +41,7 @@ A Snoo Terminal application to browse Reddit posts and comments using the Reddit
    ```env
    REDDIT_CLIENT_ID=your_client_id
    REDDIT_CLIENT_SECRET=your_client_secret
-   REDDIT_USER_AGENT=your_user_agent
+   REDDIT_USER_AGENT=python.com:your_app:1.0.0 (by u/your_user)
    OPENAI_API_KEY=your_key
    ```
 
