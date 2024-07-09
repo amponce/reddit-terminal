@@ -54,8 +54,7 @@ class RedditTerminal:
             self.comment_manager.current_comments = get_comments(post, self.reddit_client)
             self.comment_manager.comment_page = 0
             self.selected_post_index = post_index
-            self.console_ui.display_post_details(post)
-            self.display_post_and_comments(post)
+            self.console_ui.display_post_and_comments(post, self.comment_manager.current_comments, self.comment_manager.comment_page)
         else:
             print(f"Invalid post number. Please enter a number between 1 and {len(self.current_posts)}.")
 

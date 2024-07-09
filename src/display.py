@@ -16,6 +16,7 @@ class ConsoleUI:
             return Text(str(score), style="bold red")
         else:
             return Text(str(score), style="bold yellow")
+
     def print_status(self, current_subreddit, post_sort_method, post_limit):
         status_table = Table(title="Current Status", show_header=False, box=None)
         status_table.add_column("Field", style="cyan")
@@ -59,7 +60,6 @@ class ConsoleUI:
         self.console.print(table)
 
     def display_post_and_comments(self, post, comments, comment_page):
-        self.display_post_details(post)
         self.console.print("\n[bold]Comments:[/bold]")
         self.display_threaded_comments(comments, comment_page * 10, 10)
         self.console.print("\nType 'n' for next page, 'p' for previous page, or 'b' to go back to posts.")
@@ -133,6 +133,4 @@ class ConsoleUI:
         - You need to set up your OpenAI API key in the .env file for the summarize feature to work.
         """
 
-
- 
         self.console.print(help_text)
