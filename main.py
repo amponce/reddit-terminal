@@ -7,6 +7,7 @@ from src.comment_utils import CommentManager, get_comments
 from src.search import search_and_summarize
 from src.ai_analysis import AIClient
 from src.config import config
+from src.ai_crypto import AIClientCrypto, CRYPTO_SUBREDDITS
 
 import webbrowser
 
@@ -19,7 +20,7 @@ class RedditTerminal:
         self.console_ui = ConsoleUI()
         self.comment_manager = CommentManager()
         self.ai_client = AIClient(config.OPENAI_API_KEY) if config.USE_AI_FEATURES else None
-        
+        self.ai_client_crypto = AIClientCrypto(config.OPENAI_API_KEY) if config.USE_AI_FEATURES else None
         self.current_subreddit = config.DEFAULT_SUBREDDIT
         self.current_posts = []
         self.post_limit = config.DEFAULT_POST_LIMIT
@@ -52,7 +53,8 @@ class RedditTerminal:
         if 0 <= post_index < len(self.current_posts):
             post = self.current_posts[post_index]
             post = self.reddit_client.get_post_content(post)  # Fetch the post content
-            self.comment_manager.current_comments = get_comments(post, self.reddit_client)
+            comments = self.reddit_client.get_comments(post)  # Fetch comments
+            self.comment_manager.current_comments = comments
             self.comment_manager.comment_page = 0
             self.selected_post_index = post_index
             self.console_ui.display_post_and_comments(post, self.comment_manager.current_comments, self.comment_manager.comment_page)
@@ -93,10 +95,44 @@ class RedditTerminal:
         if self.ai_client:
             comment_texts = [comment.body for comment in comments if hasattr(comment, 'body')]
             input_text = f"Post Title: {post.title}\n\nPost Content: {post.selftext}\n\nComments:\n" + "\n".join(comment_texts)
+            
+            # Truncate input text to fit within token limit
+            max_tokens = 8192 - 500  # Leave some buffer for prompt and response
+            input_text = input_text[:max_tokens]
+
             analysis = self.ai_client.system_command(input_text)
             return analysis
         else:
             return "AI analysis is not enabled. Please check your configuration."
+
+        
+    def analyze_crypto_post(self, post_index):
+        if 0 <= post_index < len(self.current_posts):
+            post = self.current_posts[post_index]
+            post = self.reddit_client.get_post_content(post)  # Fetch the post content
+            comments = [comment.body for comment in self.comment_manager.current_comments]
+            input_text = f"Post: {post.title}\n{post.selftext}\n\nComments:\n" + "\n".join(comments)
+            analysis = self.ai_client_crypto.system_command(input_text)
+            print(f"\nDetailed Crypto Analysis of '{post.title}':\n{analysis}")
+        else:
+            print(f"Invalid post number. Please enter a number between 1 and {len(self.current_posts)}.")
+
+    def search_and_analyze_crypto(self):
+        report = []
+        for subreddit in CRYPTO_SUBREDDITS:
+            print(f"\nAnalyzing subreddit: {subreddit}\n")
+            self.change_subreddit(subreddit)
+            self.refresh_posts()
+            for i, post in enumerate(self.current_posts):
+                self.view_post(i)
+                comments = [comment.body for comment in self.comment_manager.current_comments]
+                input_text = f"Post: {post.title}\n{post.selftext}\n\nComments:\n" + "\n".join(comments)
+                analysis = self.ai_client_crypto.system_command(input_text)
+                report.append(f"\n### {post.title} ({subreddit})\n{analysis}\n")
+        print("\nFinal Crypto Report:\n")
+        print("\n".join(report))
+        with open('crypto_report.md', 'w') as f:
+            f.write("\n".join(report))
 
     def run(self):
         self.refresh_posts()
@@ -152,6 +188,11 @@ class RedditTerminal:
                         print("Please provide a valid post number to analyze.")
                 else:
                     print("AI features are not enabled.")
+            elif command[0] == 'analyze_crypto':
+                if len(command) > 1 and command[1].isdigit():
+                    self.analyze_crypto_post(int(command[1]) - 1)
+                else:
+                    self.search_and_analyze_crypto()
             else:
                 print("Invalid command. Type '/help' for a list of available commands.")
 
