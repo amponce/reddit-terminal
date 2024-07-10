@@ -1,18 +1,18 @@
 # Reddit Terminal
 
-A Snoo Terminal application to browse Reddit posts and comments using the Reddit API or web scraping as a fallback.
+A Snoo Terminal application to browse Reddit posts and comments using the Reddit API.
 
 ## Features
 
 - View posts from the front page or specific subreddits
 - Display comments in a threaded manner
 - Pagination for comments
-- Fallback to web scraping if API credentials are not available (This feature is currently blocked by Reddit)
+- AI-powered analysis of posts and comments
 
 ## Prerequisites
 
 - Python 3.6 or later
-- `praw`, `requests`, `beautifulsoup4`, `rich`, `python-dotenv`
+- `praw`, `requests`, `beautifulsoup4`, `rich`, `python-dotenv`, `openai`
 
 ## Installation
 
@@ -36,7 +36,7 @@ A Snoo Terminal application to browse Reddit posts and comments using the Reddit
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file in the root directory with your Reddit API credentials:
+4. Create a `.env` file in the root directory with your Reddit API and OpenAI credentials:
 
    ```env
    REDDIT_CLIENT_ID=your_client_id
@@ -74,8 +74,7 @@ python main.py
 - `/sort <method>` - Change the post sorting method. Options: `hot`, `new`, `top`
 - `/limit <number>` - Change the number of posts displayed
 - `<number>` - View a specific post and its comments
-- `s` - Search and summarize (available globally)
-- `analyze` - Get AI analysis of the current subreddit
+- `analyze` - Get AI analysis of the current post
 - `n` - View next page of comments
 - `p` - View previous page of comments
 - `b` - Go back to post list
@@ -94,3 +93,20 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Recent Changes
+
+- **Removed Web Scraping**: Web scraping feature was removed due to Reddit blocking such access.
+- **AI Analysis**: Integrated OpenAI's GPT model for detailed analysis of posts and comments.
+- **Context Management**: Implemented strategies to handle context length limitations during AI analysis.
+
+### Context Management in AI Analysis
+
+To handle the context length issue when analyzing large Reddit posts and their comments, the following strategies are employed:
+
+1. **Summarize Long Comments**: Summarize individual comments to reduce their length while retaining key information.
+2. **Truncate Excess Comments**: Analyze only the top N comments based on upvotes or relevance if there are too many comments.
+3. **Batch Processing**: Process the text in batches if it's too long to handle in a single API call, then aggregate the results.
+4. **Selective Inclusion**: Include only the most relevant parts of the post and comments, prioritizing highly upvoted comments and those with rich content.
+
+These changes and strategies ensure that the application remains efficient and within the token limits of the AI models used for analysis.
