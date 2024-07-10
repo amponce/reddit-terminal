@@ -132,6 +132,7 @@ class ConsoleUI:
         q                   - Quit the program
         s                   - Search and summarize (available globally)
         analyze             - Get AI analysis of the current subreddit
+        analyze_post [number] - Analyze a specific post from the list
 
         Notes:
         - If no subreddit is specified, the front page will be shown.

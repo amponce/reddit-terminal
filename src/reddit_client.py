@@ -1,4 +1,3 @@
-
 import os
 import praw
 import requests
@@ -64,3 +63,18 @@ class RedditClient:
             text = post.find('div', class_='expando').text.strip() if post.find('div', class_='expando') else ''
             posts.append(Post(title, score, author, num_comments, url, text=text))
         return posts[:10]
+
+    def get_post_content(self, post):
+        if self.use_api:
+            full_post = self.reddit.submission(id=post.id)
+            post.selftext = full_post.selftext
+            post.score = full_post.score
+            post.num_comments = full_post.num_comments
+            post.created_utc = full_post.created_utc
+        else:
+            response = requests.get(post.url, headers={'User-Agent': 'Mozilla/5.0'})
+            soup = BeautifulSoup(response.text, 'html.parser')
+            post.selftext = soup.find('div', class_='usertext-body').text.strip() if soup.find('div', class_='usertext-body') else ''
+            post.score = int(soup.find('div', class_='score unvoted').text.strip()) if soup.find('div', class_='score unvoted') else 0
+            post.num_comments = int(soup.find('a', class_='comments').text.split()[0]) if soup.find('a', class_='comments') else 0
+        return post
