@@ -1,5 +1,6 @@
 # ai_analysis.py
-
+import tiktoken
+import logging
 from openai import OpenAI
 from .post_analysis import (
     extract_summary, extract_ideas, extract_insights, extract_quotes, extract_habits, 
@@ -88,3 +89,80 @@ class AIClient:
         self.conversation_history.append({"role": "user", "content": input_text})
         self.conversation_history.append({"role": "assistant", "content": analysis})
         return analysis
+    
+    def truncate_comments(self, comments, max_tokens=2000):
+        encoder = tiktoken.get_encoding("cl100k_base")
+        truncated_comments = []
+        token_count = 0
+
+        for comment in comments:
+            comment_tokens = len(encoder.encode(comment))
+            if token_count + comment_tokens > max_tokens:
+                break
+            truncated_comments.append(comment)
+            token_count += comment_tokens
+
+        logging.info(f"Truncated comments from {len(comments)} to {len(truncated_comments)}")
+        return truncated_comments
+
+    def summarize_comments(self, comments, post_title, subreddit):
+        truncated_comments = self.truncate_comments(comments)
+        
+        prompt = f"""
+        Post Title: {post_title}
+        Subreddit: {subreddit}
+        Summarize the following comments:
+        {' '.join(truncated_comments)}
+        """
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that summarizes comments."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.7
+            )
+            
+            summary = response.choices[0].message.content.strip()
+            logging.info("Successfully generated summary")
+            return summary
+        except Exception as e:
+            logging.error(f"Error in summarize_comments: {str(e)}")
+            return None
+
+    def extract_topics(self, comments):
+        truncated_comments = self.truncate_comments(comments)
+        
+        prompt = f"""
+        Extract the main topics discussed in the following comments. 
+        Return each topic as a full phrase or sentence.
+        Provide a numbered list of 10-15 topics, with each topic on a new line.
+
+        Comments:
+        {' '.join(truncated_comments)}
+        """
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that extracts topics from comments."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.7
+            )
+            
+            topics = response.choices[0].message.content.strip()
+            
+            # Split the topics into a list and clean them up
+            topic_list = [topic.split('. ', 1)[-1].strip() for topic in topics.split('\n') if topic.strip()]
+            
+            logging.info(f"Successfully extracted {len(topic_list)} topics")
+            return topic_list
+        except Exception as e:
+            logging.error(f"Error in extract_topics: {str(e)}")
+            return None

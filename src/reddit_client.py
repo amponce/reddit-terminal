@@ -5,7 +5,9 @@ from dotenv import load_dotenv
 from .models import Post, Comment
 
 class RedditClient:
-    def __init__(self):
+    def __init__(self, use_api=True):
+        self.use_api = use_api
+
         load_dotenv()
         self.reddit = self._authenticate()
 

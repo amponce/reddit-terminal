@@ -73,8 +73,11 @@ class ConsoleUI:
         self.console.print("\n[bold]Type 'details' to see the full comments or 'back' to return to the post list.[/bold]")
 
     def display_topics(self, topics):
-        for idx, topic in enumerate(topics):
-            self.console.print(f"Topic {idx+1}: {', '.join(topic)}")
+        if topics:
+            for idx, topic in enumerate(topics, 1):
+                self.console.print(f"Topic {idx}: {topic}")
+        else:
+            self.console.print("No topics were extracted.")
 
     def display_threaded_comments(self, comments, start=0, count=10):
         displayed = 0
